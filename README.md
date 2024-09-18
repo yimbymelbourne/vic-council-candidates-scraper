@@ -4,7 +4,11 @@ A webscraper that gets all Council candidates from the VEC and writes their deta
 
 ## Getting the data
 
-Data ~~is~~ will be available as CSV file(s) in the `outputs` directory.
+Data is available as CSV files in the [`data` directory](https://github.com/yimbymelbourne/vic-council-candidates-scraper/tree/main/data).
+
+- candidates.csv: Contains all candidates for all councils in Victoria.
+- MCC-candidates.csv: Contains all candidates for Melbourne City Council.
+- MCC-leadership.csv: Contains all leadership candidates for Melbourne City Council.
 
 ## Running project
 
