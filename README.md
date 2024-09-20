@@ -24,6 +24,14 @@ poetry install
 
 2. Run the project
 
+### Scraper
+
 ```bash
 poetry run python scraper.py
+```
+
+### Keyword search
+
+```bash
+poetry run python keywords.py
 ```
