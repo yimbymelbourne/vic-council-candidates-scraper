@@ -1,4 +1,5 @@
 import csv
+from pprint import pprint
 from datetime import datetime
 from bs4 import BeautifulSoup
 from datetime import datetime
@@ -38,6 +39,7 @@ def write_candidates_to_csv(all_data: list):
                 "ward",
                 "candidate_name",
                 "candidate_name_printable",
+                "candidate_statement",
                 "candidate_email",
                 "candidate_phone",
                 "candidate_party_best_guess",
@@ -50,6 +52,7 @@ def write_candidates_to_csv(all_data: list):
                     data["ward"],
                     data["candidate_name"],
                     data["candidate_name_printable"],
+                    data["candidate_statement"],
                     data["candidate_email"],
                     data["candidate_phone"],
                     data["candidate_party"],
@@ -80,7 +83,9 @@ def parse_candidate_details(columns: list) -> dict:
         candidate_name.split(", ")[1] + " " + candidate_name.split(", ")[0].title()
     )
 
-    contact_details = columns[1].text.strip()
+    candidate_statement = columns[1].text.strip()
+
+    contact_details = columns[2].text.strip()
 
     # Extract email and phone from contact details
     candidate_email = get_email(contact_details)
@@ -93,7 +98,24 @@ def parse_candidate_details(columns: list) -> dict:
         "candidate_email": candidate_email,
         "candidate_phone": candidate_phone,
         "candidate_party": candidate_party,
+        "candidate_statement": candidate_statement,
     }
+
+
+def parse_candidate_statements(statement_rows: list) -> list:
+    statements = []
+    for row in statement_rows:
+        unformatted = row.find_all("td")[1].text.strip()
+        formatted = (
+            unformatted.replace("\n", " ")
+            .replace("\r", " ")
+            .replace("\t", " ")
+            .replace("Candidate Statement", "")
+        )
+        if not formatted:
+            formatted = "No statement available"
+        statements.append(formatted)
+    return statements
 
 
 def parse_wards(soup: BeautifulSoup, council_name: str) -> list:
@@ -108,13 +130,23 @@ def parse_wards(soup: BeautifulSoup, council_name: str) -> list:
         # Find the corresponding table for the ward
         table = soup.find("div", id=f'{ward_name.lower().replace(" ", "-")}')
         if table:
+            statement_rows = table.find_all("tr", class_="candidate-row hidden")
+            statements = parse_candidate_statements(statement_rows)
+            if len(statements) == 0:
+                # hacky but it works
+                statements.extend(["No statement available"] * 5)
+
             rows = table.find_all("tr", class_="candidate-row")
+
             logging.info(
-                f"   -> Scraping {len(rows) - 2} candidates from {ward_name}..."
+                f"   -> Scraping {round((len(rows)-2)/2)} candidates from {ward_name}..."
             )
+
+            statement_counter = 0
             for row in rows:
                 columns = row.find_all("td")
-                if len(columns) >= 2:
+
+                if len(columns) == 3:
                     candidate_dict = parse_candidate_details(columns)
 
                     candidate_dict = {
@@ -124,10 +156,22 @@ def parse_wards(soup: BeautifulSoup, council_name: str) -> list:
                         "candidate_name_printable": candidate_dict[
                             "candidate_name_printable"
                         ],
+                        "candidate_statement": (
+                            statements[statement_counter]
+                            if candidate_dict["candidate_statement"]
+                            == "See questionnaire response"
+                            else candidate_dict["candidate_statement"]
+                        ),
                         "candidate_email": candidate_dict["candidate_email"],
                         "candidate_phone": candidate_dict["candidate_phone"],
                         "candidate_party": candidate_dict["candidate_party"],
                     }
+
+                    if (
+                        candidate_dict["candidate_statement"]
+                        != "See questionnaire response"
+                    ):
+                        statement_counter += 1
 
                     data.append(candidate_dict)
 
